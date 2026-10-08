@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { background: #F2F3F0; color: #1E2B2F; -webkit-font-smoothing: antialiased; }
+  body { font-family: var(--font-sans), system-ui, sans-serif; font-size: 1rem; line-height: 1.6; }
+  h1, h2, h3 { font-family: var(--font-serif), Georgia, serif; letter-spacing: -0.025em; font-weight: 400; line-height: 1.05; }
+  :focus-visible { outline: 2px solid #A4824A; outline-offset: 3px; }
+  ::selection { background: #3E5C55; color: #F2F3F0; }
+}
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-medium transition-colors duration-200; }
+  .btn-primary { @apply btn bg-basalt text-paper hover:bg-moss; }
+  .btn-brass { @apply btn bg-brass text-paper hover:bg-basalt; }
+  .btn-ghost { @apply btn border border-basalt/30 text-basalt hover:border-basalt; }
+  .field { @apply w-full bg-transparent border-0 border-b border-basalt/30 px-0 py-3 text-sm focus:border-basalt focus:ring-0 focus:outline-none; }
+}
+
+/* Satu momen gerak: hero terbuka seperti tirai saat dimuat. Selebihnya diam. */
+/* Mulai dengan sebagian besar gambar sudah terlihat agar LCP tidak tertunda oleh animasi. */
+@keyframes curtain { from { clip-path: inset(0 0 14% 0); } to { clip-path: inset(0 0 0 0); } }
+.hero-reveal { animation: curtain .8s cubic-bezier(.7,0,.2,1) both; }
+/* Seksi di bawah lipatan tidak dirender sampai mendekati layar. */
+.cv-auto { content-visibility: auto; contain-intrinsic-size: auto 700px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-reveal { animation: none; }
+  * { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}
+
+.prose-estate p { margin: 0 0 .9em; }
+.prose-estate h2 { font-family: var(--font-serif), Georgia, serif; font-size: 1.5rem; margin: 1em 0 .4em; }
+.prose-estate h3 { font-family: var(--font-serif), Georgia, serif; font-size: 1.2rem; margin: 1em 0 .4em; }
+.prose-estate ul { list-style: disc; padding-left: 1.25rem; margin: 0 0 .9em; }
+.prose-estate ol { list-style: decimal; padding-left: 1.25rem; margin: 0 0 .9em; }
+.prose-estate blockquote { border-left: 2px solid #A4824A; padding-left: 1rem; color: #6B7A78; margin: 0 0 .9em; }
+.prose-estate a { text-decoration: underline; }
