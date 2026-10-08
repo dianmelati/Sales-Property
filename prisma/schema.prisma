@@ -1,0 +1,413 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────── Auth & RBAC ─────────
+enum RoleName {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  AGENT
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        RoleName         @unique
+  permissions RolePermission[]
+  users       User[]
+}
+
+model Permission {
+  id    String           @id @default(cuid())
+  key   String           @unique // "property:write", "lead:read", ...
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  passwordHash String
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id])
+  agent        Agent?
+  isActive     Boolean    @default(true)
+  // Sesi yang diterbitkan sebelum waktu ini ditolak (dipakai saat reset password).
+  sessionsValidAfter DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+  auditLogs    AuditLog[]
+  leadNotes    LeadNote[]
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  diff      Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+// ───────── Katalog ─────────
+enum TransactionType {
+  SALE
+  RENT
+}
+
+enum PropertyStatus {
+  DRAFT
+  PUBLISHED
+  RESERVED
+  SOLD
+  RENTED
+  ARCHIVED
+}
+
+enum Certificate {
+  SHM
+  HGB
+  HPL
+  STRATA
+  OTHER
+}
+
+model PropertyCategory {
+  id         String     @id @default(cuid())
+  name       String
+  slug       String     @unique
+  sortOrder  Int        @default(0)
+  properties Property[]
+}
+
+model PropertyLocation {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  city        String
+  province    String?
+  description String?
+  coverId     String?
+  cover       Media?       @relation(fields: [coverId], references: [id], onDelete: SetNull)
+  latitude    Decimal?     @db.Decimal(9, 6)
+  longitude   Decimal?     @db.Decimal(9, 6)
+  seo         SeoMetadata?
+  properties  Property[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([city])
+}
+
+model Agent {
+  id         String     @id @default(cuid())
+  userId     String?    @unique
+  user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name       String
+  slug       String     @unique
+  title      String?
+  bio        String?
+  phone      String?
+  email      String?
+  photoId    String?
+  photo      Media?     @relation(fields: [photoId], references: [id], onDelete: SetNull)
+  isFeatured Boolean    @default(false)
+  isActive   Boolean    @default(true)
+  properties Property[]
+  leads      Lead[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  deletedAt  DateTime?
+}
+
+model Property {
+  id           String            @id @default(cuid())
+  code         String            @unique // Property ID publik, mis. "EST-0001"
+  title        String
+  slug         String            @unique
+  categoryId   String
+  category     PropertyCategory  @relation(fields: [categoryId], references: [id])
+  locationId   String
+  location     PropertyLocation  @relation(fields: [locationId], references: [id])
+  agentId      String?
+  agent        Agent?            @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  transaction  TransactionType
+  price        Decimal           @db.Decimal(18, 2)
+  currency     String            @default("IDR")
+  address      String?
+  latitude     Decimal?          @db.Decimal(9, 6)
+  longitude    Decimal?          @db.Decimal(9, 6)
+  landArea     Int? // m²
+  buildingArea Int? // m²
+  bedrooms     Int?
+  bathrooms    Int?
+  floors       Int?
+  parking      Int?
+  certificate  Certificate?
+  furnished    Boolean           @default(false)
+  hasPool      Boolean           @default(false)
+  hasGarage    Boolean           @default(false)
+  hasGarden    Boolean           @default(false)
+  description  String? // HTML rich text, disanitasi di server sebelum disimpan
+  status       PropertyStatus    @default(DRAFT)
+  isFeatured   Boolean           @default(false)
+  isPremium    Boolean           @default(false)
+  viewCount    Int               @default(0)
+  publishedAt  DateTime?
+  features     PropertyFeature[]
+  images       PropertyImage[]
+  floorPlans   FloorPlan[]
+  models       ThreeDModel[]
+  videos       Video[]
+  leads        Lead[]
+  seo          SeoMetadata?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  deletedAt    DateTime?
+
+  @@index([status, publishedAt])
+  @@index([transaction, price])
+  @@index([locationId, categoryId])
+  @@index([isFeatured, status])
+  @@index([status, deletedAt, publishedAt])
+  @@index([agentId, status])
+}
+
+model PropertyFeature {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  label      String
+  sortOrder  Int      @default(0)
+
+  @@index([propertyId])
+}
+
+model PropertyImage {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  mediaId    String
+  media      Media    @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  caption    String?
+  isCover    Boolean  @default(false)
+  sortOrder  Int      @default(0)
+
+  @@unique([propertyId, mediaId])
+  @@index([propertyId, sortOrder])
+}
+
+// ───────── Media ─────────
+enum MediaKind {
+  IMAGE
+  FLOOR_PLAN
+  MODEL
+  VIDEO
+  DOCUMENT
+}
+
+model Media {
+  id           String    @id @default(cuid())
+  kind         MediaKind
+  name         String
+  mimeType     String
+  sizeBytes    Int
+  width        Int?
+  height       Int?
+  blurDataUrl  String?
+  alt          String?
+  isWebp       Boolean   @default(false)
+  // Kunci objek storage per varian: { thumbnail, small, medium, large, original? }
+  variants     Json
+  uploadedById String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  propertyImages PropertyImage[]
+  floorPlans     FloorPlan[]
+  models         ThreeDModel[]
+  agents         Agent[]
+  locations      PropertyLocation[]
+  testimonials   Testimonial[]
+  pageSections   PageSection[]
+  seoImages      SeoMetadata[]
+
+  @@index([kind, createdAt])
+  @@index([name])
+}
+
+model FloorPlan {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  mediaId    String
+  media      Media    @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  label      String // "Ground Floor", "Second Floor", "Roof Plan"
+  sortOrder  Int      @default(0)
+
+  @@index([propertyId, sortOrder])
+}
+
+model ThreeDModel {
+  id           String   @id @default(cuid())
+  propertyId   String
+  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  mediaId      String // file .glb / .gltf
+  media        Media    @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  label        String   @default("Model")
+  cameraConfig Json? // { position:[x,y,z], target:[x,y,z], fov }
+  lightPreset  String   @default("studio") // studio | daylight | sunset
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([propertyId])
+}
+
+model Video {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  title      String?
+  provider   String // "youtube" | "vimeo" | "file"
+  url        String
+  sortOrder  Int      @default(0)
+
+  @@index([propertyId])
+}
+
+// ───────── Leads ─────────
+enum LeadStatus {
+  NEW
+  CONTACTED
+  FOLLOW_UP
+  VIEWING
+  NEGOTIATION
+  CLOSED
+  LOST
+}
+
+model Lead {
+  id         String     @id @default(cuid())
+  name       String
+  phone      String
+  email      String?
+  message    String?
+  source     String // "inquiry_form" | "whatsapp" | "viewing_request" | "contact_page"
+  status     LeadStatus @default(NEW)
+  propertyId String?
+  property   Property?  @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  agentId    String?
+  agent      Agent?     @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  viewingAt  DateTime?
+  notes      LeadNote[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([status, createdAt])
+  @@index([propertyId])
+  @@index([agentId, status])
+  @@index([createdAt])
+}
+
+model LeadNote {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([leadId, createdAt])
+}
+
+// ───────── CMS ─────────
+model Page {
+  id        String        @id @default(cuid())
+  key       String        @unique // "home", "about", "contact"
+  title     String
+  isVisible Boolean       @default(true)
+  sections  PageSection[]
+  seo       SeoMetadata?
+  updatedAt DateTime      @updatedAt
+}
+
+model PageSection {
+  id        String   @id @default(cuid())
+  pageId    String
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  type      String // "hero" | "featured" | "services" | "why_us" | "cta" | ...
+  content   Json // teks, tautan, tombol; divalidasi Zod per type
+  imageId   String?
+  image     Media?   @relation(fields: [imageId], references: [id], onDelete: SetNull)
+  sortOrder Int      @default(0)
+  isVisible Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+
+  @@index([pageId, sortOrder])
+}
+
+model Testimonial {
+  id        String  @id @default(cuid())
+  author    String
+  role      String?
+  quote     String
+  photoId   String?
+  photo     Media?  @relation(fields: [photoId], references: [id], onDelete: SetNull)
+  isVisible Boolean @default(true)
+  sortOrder Int     @default(0)
+}
+
+model FAQ {
+  id        String  @id @default(cuid())
+  question  String
+  answer    String
+  isVisible Boolean @default(true)
+  sortOrder Int     @default(0)
+}
+
+model SeoMetadata {
+  id          String            @id @default(cuid())
+  title       String?
+  description String?
+  keywords    String?
+  canonical   String?
+  ogImageId   String?
+  ogImage     Media?            @relation(fields: [ogImageId], references: [id], onDelete: SetNull)
+  noIndex     Boolean           @default(false)
+  propertyId  String?           @unique
+  property    Property?         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  locationId  String?           @unique
+  location    PropertyLocation? @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  pageId      String?           @unique
+  page        Page?             @relation(fields: [pageId], references: [id], onDelete: Cascade)
+}
+
+model SiteSetting {
+  key       String   @id // "whatsapp.number", "contact.email", "social.instagram", "nav.main"
+  value     Json
+  updatedAt DateTime @updatedAt
+}

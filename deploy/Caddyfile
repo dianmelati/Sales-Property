@@ -1,0 +1,17 @@
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Berkas unggahan (driver storage lokal) disajikan langsung dari volume bersama, bukan oleh Next.js.
+	handle_path /uploads/* {
+		root * /srv/uploads
+		header Cache-Control "public, max-age=31536000, immutable"
+		header X-Content-Type-Options nosniff
+		file_server
+	}
+
+	# Caddy menimpa X-Forwarded-For dari klien dengan alamat sebenarnya, jadi TRUSTED_PROXY_HOPS=1 aman.
+	# Di belakang CDN (mis. Cloudflare) atur TRUSTED_IP_HEADER sebagai gantinya.
+	handle {
+		reverse_proxy app:3000
+	}
+}

@@ -1,0 +1,268 @@
+# Diagram relasi database (ERD)
+
+Dibuat otomatis dari `prisma/schema.prisma` oleh `npm run docs:erd`. Jangan diedit manual.
+23 tabel, 29 relasi. PK = kunci utama, UK = unik. Hapus lunak (`deletedAt`) ada pada Property, Agent, User, dan Media.
+
+```mermaid
+erDiagram
+  Role ||--o{ RolePermission : "role"
+  Permission ||--o{ RolePermission : "permission"
+  Role ||--o{ User : "role"
+  User |o--o{ AuditLog : "user"
+  Media |o--o{ PropertyLocation : "cover"
+  User |o--o{ Agent : "user"
+  Media |o--o{ Agent : "photo"
+  PropertyCategory ||--o{ Property : "category"
+  PropertyLocation ||--o{ Property : "location"
+  Agent |o--o{ Property : "agent"
+  Property ||--o{ PropertyFeature : "property"
+  Property ||--o{ PropertyImage : "property"
+  Media ||--o{ PropertyImage : "media"
+  Property ||--o{ FloorPlan : "property"
+  Media ||--o{ FloorPlan : "media"
+  Property ||--o{ ThreeDModel : "property"
+  Media ||--o{ ThreeDModel : "media"
+  Property ||--o{ Video : "property"
+  Property |o--o{ Lead : "property"
+  Agent |o--o{ Lead : "agent"
+  Lead ||--o{ LeadNote : "lead"
+  User |o--o{ LeadNote : "author"
+  Page ||--o{ PageSection : "page"
+  Media |o--o{ PageSection : "image"
+  Media |o--o{ Testimonial : "photo"
+  Media |o--o{ SeoMetadata : "ogImage"
+  Property |o--o{ SeoMetadata : "property"
+  PropertyLocation |o--o{ SeoMetadata : "location"
+  Page |o--o{ SeoMetadata : "page"
+  Role {
+    String id PK
+    enum name UK
+  }
+  Permission {
+    String id PK
+    String key UK
+  }
+  RolePermission {
+    String roleId
+    String permissionId
+  }
+  User {
+    String id PK
+    String email UK
+    String name
+    String passwordHash
+    String roleId
+    Boolean isActive
+    DateTime sessionsValidAfter "opsional"
+    DateTime createdAt
+    DateTime updatedAt
+    DateTime deletedAt "opsional"
+  }
+  AuditLog {
+    String id PK
+    String userId "opsional"
+    String action
+    String entity
+    String entityId "opsional"
+    Json diff "opsional"
+    String ip "opsional"
+    DateTime createdAt
+  }
+  PropertyCategory {
+    String id PK
+    String name
+    String slug UK
+    Int sortOrder
+  }
+  PropertyLocation {
+    String id PK
+    String name
+    String slug UK
+    String city
+    String province "opsional"
+    String description "opsional"
+    String coverId "opsional"
+    Decimal latitude "opsional"
+    Decimal longitude "opsional"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  Agent {
+    String id PK
+    String userId UK "opsional"
+    String name
+    String slug UK
+    String title "opsional"
+    String bio "opsional"
+    String phone "opsional"
+    String email "opsional"
+    String photoId "opsional"
+    Boolean isFeatured
+    Boolean isActive
+    DateTime createdAt
+    DateTime updatedAt
+    DateTime deletedAt "opsional"
+  }
+  Property {
+    String id PK
+    String code UK
+    String title
+    String slug UK
+    String categoryId
+    String locationId
+    String agentId "opsional"
+    enum transaction
+    Decimal price
+    String currency
+    String address "opsional"
+    Decimal latitude "opsional"
+    Decimal longitude "opsional"
+    Int landArea "opsional"
+    Int buildingArea "opsional"
+    Int bedrooms "opsional"
+    Int bathrooms "opsional"
+    Int floors "opsional"
+    Int parking "opsional"
+    enum certificate "opsional"
+    Boolean furnished
+    Boolean hasPool
+    Boolean hasGarage
+    Boolean hasGarden
+    String description "opsional"
+    enum status
+    Boolean isFeatured
+    Boolean isPremium
+    Int viewCount
+    DateTime publishedAt "opsional"
+    DateTime createdAt
+    DateTime updatedAt
+    DateTime deletedAt "opsional"
+  }
+  PropertyFeature {
+    String id PK
+    String propertyId
+    String label
+    Int sortOrder
+  }
+  PropertyImage {
+    String id PK
+    String propertyId
+    String mediaId
+    String caption "opsional"
+    Boolean isCover
+    Int sortOrder
+  }
+  Media {
+    String id PK
+    enum kind
+    String name
+    String mimeType
+    Int sizeBytes
+    Int width "opsional"
+    Int height "opsional"
+    String blurDataUrl "opsional"
+    String alt "opsional"
+    Boolean isWebp
+    Json variants
+    String uploadedById "opsional"
+    DateTime createdAt
+    DateTime updatedAt
+    DateTime deletedAt "opsional"
+  }
+  FloorPlan {
+    String id PK
+    String propertyId
+    String mediaId
+    String label
+    Int sortOrder
+  }
+  ThreeDModel {
+    String id PK
+    String propertyId
+    String mediaId
+    String label
+    Json cameraConfig "opsional"
+    String lightPreset
+    Boolean isDefault
+    DateTime createdAt
+  }
+  Video {
+    String id PK
+    String propertyId
+    String title "opsional"
+    String provider
+    String url
+    Int sortOrder
+  }
+  Lead {
+    String id PK
+    String name
+    String phone
+    String email "opsional"
+    String message "opsional"
+    String source
+    enum status
+    String propertyId "opsional"
+    String agentId "opsional"
+    DateTime viewingAt "opsional"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  LeadNote {
+    String id PK
+    String leadId
+    String authorId "opsional"
+    String body
+    DateTime createdAt
+  }
+  Page {
+    String id PK
+    String key UK
+    String title
+    Boolean isVisible
+    DateTime updatedAt
+  }
+  PageSection {
+    String id PK
+    String pageId
+    String type
+    Json content
+    String imageId "opsional"
+    Int sortOrder
+    Boolean isVisible
+    DateTime updatedAt
+  }
+  Testimonial {
+    String id PK
+    String author
+    String role "opsional"
+    String quote
+    String photoId "opsional"
+    Boolean isVisible
+    Int sortOrder
+  }
+  FAQ {
+    String id PK
+    String question
+    String answer
+    Boolean isVisible
+    Int sortOrder
+  }
+  SeoMetadata {
+    String id PK
+    String title "opsional"
+    String description "opsional"
+    String keywords "opsional"
+    String canonical "opsional"
+    String ogImageId "opsional"
+    Boolean noIndex
+    String propertyId UK "opsional"
+    String locationId UK "opsional"
+    String pageId UK "opsional"
+  }
+  SiteSetting {
+    String key PK
+    Json value
+    DateTime updatedAt
+  }
+```
