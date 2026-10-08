@@ -1,0 +1,63 @@
+# Satu server (VPS): PostgreSQL + aplikasi + Caddy (HTTPS otomatis). Langkah lengkap ada di DEPLOYMENT.md.
+# Urutan yang benar ada di scripts/deploy.sh. Jangan langsung `docker compose up` pada instalasi pertama.
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: estate
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?isi POSTGRES_PASSWORD di .env}
+      POSTGRES_DB: estate
+    volumes: [pgdata:/var/lib/postgresql/data]
+    # Hanya di localhost: dipakai build (network host) dan akses admin lewat SSH tunnel. Jangan buka ke internet.
+    ports: ["127.0.0.1:5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U estate -d estate"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  tools:
+    profiles: ["tools"]
+    build: { context: ., target: tools }
+    environment:
+      DATABASE_URL: postgresql://estate:${POSTGRES_PASSWORD}@db:5432/estate
+      ADMIN_SEED_EMAIL: ${ADMIN_SEED_EMAIL:-}
+      ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD:-}
+      WHATSAPP_SEED_NUMBER: ${WHATSAPP_SEED_NUMBER:-}
+    depends_on: { db: { condition: service_healthy } }
+
+  app:
+    build:
+      context: .
+      target: runner
+      network: host   # build perlu menjangkau database di 127.0.0.1:5432 (lihat Dockerfile)
+      args:
+        DATABASE_URL: postgresql://estate:${POSTGRES_PASSWORD}@127.0.0.1:5432/estate
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?isi NEXT_PUBLIC_SITE_URL di .env}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://estate:${POSTGRES_PASSWORD}@db:5432/estate
+    volumes: [uploads:/app/public/uploads]
+    depends_on: { db: { condition: service_healthy } }
+    expose: ["3000"]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?isi DOMAIN di .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - uploads:/srv/uploads:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app]
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:

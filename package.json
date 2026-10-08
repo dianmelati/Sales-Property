@@ -1,0 +1,60 @@
+{
+  "name": "estate",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "typecheck": "tsc --noEmit",
+    "analyze": "ANALYZE=true next build",
+    "check:security": "node scripts/check-security.mjs",
+    "test": "npm run test:unit",
+    "test:unit": "tsx --tsconfig tsconfig.test.json --test \"test/unit/**/*.test.ts\" \"test/unit-deps/**/*.test.ts\"",
+    "test:integration": "tsx --tsconfig tsconfig.test.json --test --test-concurrency=1 \"test/integration/**/*.test.ts\"",
+    "test:e2e": "playwright test",
+    "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
+    "smoke": "node scripts/smoke.mjs",
+    "check:env": "node scripts/check-env-docs.mjs",
+    "docs:erd": "node scripts/gen-erd.mjs",
+    "db:seed:demo": "tsx prisma/seed-demo.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.680.0",
+    "@prisma/client": "^6.0.0",
+    "@react-three/drei": "^10.0.0",
+    "@react-three/fiber": "^9.0.0",
+    "@tiptap/pm": "^2.10.0",
+    "@tiptap/react": "^2.10.0",
+    "@tiptap/starter-kit": "^2.10.0",
+    "heic-convert": "^2.1.0",
+    "jose": "^5.9.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sanitize-html": "^2.13.1",
+    "server-only": "^0.0.1",
+    "sharp": "^0.33.5",
+    "three": "^0.170.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@next/bundle-analyzer": "^15.0.0",
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/sanitize-html": "^2.13.0",
+    "@types/three": "^0.170.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "prisma": "^6.0.0",
+    "tailwindcss": "^3.4.14",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
